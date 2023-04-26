@@ -17,7 +17,7 @@ from app.media.meta import MetaInfo
 from app.message import Message
 from app.plugins import EventManager
 from app.utils import EpisodeFormat, PathUtils, StringUtils, SystemUtils, ExceptionUtils, NumberUtils
-from app.utils.types import MediaType, SyncType, RmtMode, EventType, ProgressKey
+from app.utils.types import MediaType, SyncType, RmtMode, EventType, ProgressKey, MovieTypes
 from config import RMT_SUBEXT, RMT_MEDIAEXT, RMT_FAVTYPE, RMT_MIN_FILESIZE, DEFAULT_MOVIE_FORMAT, \
     DEFAULT_TV_FORMAT, Config
 
@@ -75,7 +75,7 @@ class FileTransfer:
                 else:
                     self._movie_path = []
             # 电影分类
-            self._movie_category_flag = self.category.get_movie_category_flag()
+            self._movie_category_flag = self.category.movie_category_flag
             # 电视剧目录
             self._tv_path = media.get('tv_path')
             if not isinstance(self._tv_path, list):
@@ -84,7 +84,7 @@ class FileTransfer:
                 else:
                     self._tv_path = []
             # 电视剧分类
-            self._tv_category_flag = self.category.get_tv_category_flag()
+            self._tv_category_flag = self.category.tv_category_flag
             # 动漫目录
             self._anime_path = media.get('anime_path')
             if not isinstance(self._anime_path, list):
@@ -93,7 +93,7 @@ class FileTransfer:
                 else:
                     self._anime_path = []
             # 动漫分类
-            self._anime_category_flag = self.category.get_anime_category_flag()
+            self._anime_category_flag = self.category.anime_category_flag
             # 没有动漫目漫切换为电视剧目录和分类
             if not self._anime_path:
                 self._anime_path = self._tv_path
@@ -434,7 +434,7 @@ class FileTransfer:
         识别并转移一个文件、多个文件或者目录
         :param in_from: 来源，即调用该功能的渠道
         :param in_path: 转移的路径，可能是一个文件也可以是一个目录
-        :param files: 文件清单，非空时以该文件清单为准，为空时从in_path中按后缀和大小限制检索需要处理的文件清单
+        :param files: 文件清单，非空时以该文件清单为准，为空时从in_path中按后缀和大小限制搜索需要处理的文件清单
         :param target_dir: 目的文件夹，非空的转移到该文件夹，为空时则按类型转移到配置文件中的媒体库文件夹
         :param unknown_dir: 未识别文件夹，非空时未识别的媒体文件转移到该文件夹，为空时则使用配置文件中的未识别文件夹
         :param rmt_mode: 文件转移方式
@@ -460,28 +460,49 @@ class FileTransfer:
             self.progress.end(ProgressKey.FileTransfer)
             return status, message
 
-        # 开始进度
-        self.progress.start(ProgressKey.FileTransfer)
-
-        episode = (None, False) if not episode else episode
         if not in_path:
             log.error("【Rmt】输入路径错误!")
             return __finish_transfer(False, "输入路径错误")
 
+        if not os.path.exists(in_path):
+            log.error("【Rmt】文件转移失败，目录或文件不存在：%s" % in_path)
+            return __finish_transfer(False, "目录或文件不存在")
+
+        # 开始进度
+        self.progress.start(ProgressKey.FileTransfer)
+        log.info("【Rmt】开始处理：%s，转移方式：%s" % (in_path, rmt_mode.value))
+
+        # 集定位参数
+        episode = (None, False) if not episode else episode
+
+        # 默认转移方式
         if not rmt_mode:
             rmt_mode = self._default_rmt_mode
 
-        log.info("【Rmt】开始处理：%s，转移方式：%s" % (in_path, rmt_mode.value))
+        # 检查下载记录，是否有已识别的信息
+        if not tmdb_info:
+            download_info = self.dbhelper.get_download_history_by_path(in_path)
+            if not download_info and os.path.isfile(in_path):
+                download_info = self.dbhelper.get_download_history_by_path(os.path.dirname(in_path))
+            if download_info and download_info.TMDBID:
+                log.info(f"【Rmt】{in_path} 找到下载记录，"
+                         f"TMDBID：{download_info.TMDBID}，"
+                         f"标题：{download_info.TITLE}，"
+                         f"类型：{download_info.TYPE}")
+                media_type = MediaType.MOVIE if download_info.TYPE in MovieTypes else MediaType.TV
+                tmdb_info = self.media.get_tmdb_info(mtype=media_type, tmdbid=download_info.TMDBID)
 
+        # 成功标识
         success_flag = True
+        # 错误信息
         error_message = ""
+        # 蓝光原盘标识
         bluray_disk_dir = None
+
+        # 统一转化为列表
         if not files:
             # 如果传入的是个目录
             if os.path.isdir(in_path):
-                if not os.path.exists(in_path):
-                    log.error("【Rmt】文件转移失败，目录不存在 %s" % in_path)
-                    return __finish_transfer(False, "目录不存在")
                 # 回收站及隐藏的文件不处理
                 if PathUtils.is_invalid_path(in_path):
                     return __finish_transfer(False, "回收站或者隐藏文件夹")
@@ -512,9 +533,6 @@ class FileTransfer:
                                                  % StringUtils.str_filesize(now_filesize))
             # 传入的是个文件
             else:
-                if not os.path.exists(in_path):
-                    log.error("【Rmt】文件转移失败，文件不存在：%s" % in_path)
-                    return __finish_transfer(False, "文件不存在")
                 if os.path.splitext(in_path)[-1].lower() not in RMT_MEDIAEXT:
                     log.warn("【Rmt】不支持的媒体文件格式，不处理：%s" % in_path)
                     return __finish_transfer(False, "不支持的媒体文件格式")
@@ -540,11 +558,12 @@ class FileTransfer:
             if not file_list:
                 log.info("【Rmt】所有文件均已成功转移过，没有需要处理的文件！如需重新处理，请清理缓存（服务->清理转移缓存）")
                 return __finish_transfer(True, "没有新文件需要处理")
-        # API检索出媒体信息，传入一个文件列表，得出每一个文件的名称，这里是当前目录下所有的文件了
+
+        # API搜索出媒体信息，传入一个文件列表，得出每一个文件的名称，这里是当前目录下所有的文件了
         Medias = self.media.get_media_info_on_files(file_list, tmdb_info, media_type, season, episode[0])
         if not Medias:
-            log.error("【Rmt】检索媒体信息出错！")
-            return __finish_transfer(False, "检索媒体信息出错")
+            log.error("【Rmt】搜索媒体信息出错！")
+            return __finish_transfer(False, "搜索媒体信息出错")
 
         # 更新进度
         self.progress.update(ptype=ProgressKey.FileTransfer, text=f"共 {len(Medias)} 个文件需要处理...")
@@ -554,8 +573,10 @@ class FileTransfer:
         alert_count = 0
         alert_messages = []
         total_count = 0
+
         # 电视剧可能有多集，如果在循环里发消息就太多了，要在外面发消息
         message_medias = {}
+
         # 处理识别后的每一个文件或单个文件夹
         for file_item, media in Medias.items():
             try:
@@ -789,10 +810,17 @@ class FileTransfer:
                         message_medias[message_key].total_episodes += media.total_episodes
                         message_medias[message_key].size += media.size
                 # 生成nfo及poster
-                self.scraper.gen_scraper_files(media=media,
-                                               dir_path=ret_dir_path,
-                                               file_name=os.path.basename(ret_file_path),
-                                               file_ext=file_ext)
+                if bluray_disk_dir and media.type == MediaType.MOVIE:
+                    # 原盘文件的情况下 使用目录名称.nfo 生成
+                    self.scraper.gen_scraper_files(media=media,
+                                                   dir_path=ret_dir_path,
+                                                   file_name=os.path.basename(ret_dir_path),
+                                                   file_ext=file_ext)
+                else:
+                    self.scraper.gen_scraper_files(media=media,
+                                                   dir_path=ret_dir_path,
+                                                   file_name=os.path.basename(ret_file_path),
+                                                   file_ext=file_ext)
                 # 更新进度
                 self.progress.update(ptype=ProgressKey.FileTransfer,
                                      value=round(total_count / len(Medias) * 100),
@@ -1126,9 +1154,10 @@ class FileTransfer:
         """
         if not media:
             return {}
+        # 当前语种标题
         episode_title = self.media.get_episode_title(media)
-        # 此处使用独立对象，避免影响语言
-        en_title = Media().get_tmdb_en_title(media)
+        # 英文标题
+        en_title = self.media.get_tmdb_en_title(media)
         media_format_dict = {
             "title": StringUtils.clear_file_name(media.title),
             "en_title": StringUtils.clear_file_name(en_title),

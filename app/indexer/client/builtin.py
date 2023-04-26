@@ -5,6 +5,7 @@ import time
 import log
 from app.helper import IndexerHelper, IndexerConf, ProgressHelper, ChromeHelper, DbHelper
 from app.indexer.client._base import _IIndexClient
+from app.indexer.client._rarbg import Rarbg
 from app.indexer.client._render_spider import RenderSpider
 from app.indexer.client._spider import TorrentSpider
 from app.indexer.client._tnode import TNodeSpider
@@ -24,6 +25,7 @@ class BuiltinIndexer(_IIndexClient):
 
     # 私有属性
     _client_config = {}
+    _show_more_sites = False
     progress = None
     sites = None
     dbhelper = None
@@ -37,6 +39,7 @@ class BuiltinIndexer(_IIndexClient):
         self.sites = Sites()
         self.progress = ProgressHelper()
         self.dbhelper = DbHelper()
+        self._show_more_sites = Config().get_config("laboratory").get('show_more_sites')
 
     @classmethod
     def match(cls, ctype):
@@ -52,7 +55,7 @@ class BuiltinIndexer(_IIndexClient):
         """
         return True
 
-    def get_indexers(self, check=True, indexer_id=None):
+    def get_indexers(self, check=True, indexer_id=None, public=True):
         ret_indexers = []
         # 选中站点配置
         indexer_sites = Config().get_config("pt").get("indexer_sites") or []
@@ -67,6 +70,7 @@ class BuiltinIndexer(_IIndexClient):
                 continue
             render = False if not chrome_ok else site.get("chrome")
             indexer = IndexerHelper().get_indexer(url=url,
+                                                  siteid=site.get("id"),
                                                   cookie=cookie,
                                                   ua=site.get("ua"),
                                                   name=site.get("name"),
@@ -78,13 +82,25 @@ class BuiltinIndexer(_IIndexClient):
             if indexer:
                 if indexer_id and indexer.id == indexer_id:
                     return indexer
-                if check and indexer_sites and indexer.id not in indexer_sites:
+                if check and (not indexer_sites or indexer.id not in indexer_sites):
                     continue
                 if indexer.domain not in _indexer_domains:
                     _indexer_domains.append(indexer.domain)
                     indexer.name = site.get("name")
                     ret_indexers.append(indexer)
-        return ret_indexers
+        # 公开站点
+        if public and self._show_more_sites:
+            for indexer in IndexerHelper().get_all_indexers():
+                if not indexer.get("public"):
+                    continue
+                if indexer_id and indexer.get("id") == indexer_id:
+                    return IndexerConf(datas=indexer)
+                if check and (not indexer_sites or indexer.get("id") not in indexer_sites):
+                    continue
+                if indexer.get("domain") not in _indexer_domains:
+                    _indexer_domains.append(indexer.get("domain"))
+                    ret_indexers.append(IndexerConf(datas=indexer))
+        return None if indexer_id else ret_indexers
 
     def search(self, order_seq,
                indexer,
@@ -93,13 +109,13 @@ class BuiltinIndexer(_IIndexClient):
                match_media,
                in_from: SearchType):
         """
-        根据关键字多线程检索
+        根据关键字多线程搜索
         """
         if not indexer or not key_word:
             return None
-        # 不是配置的索引站点过滤掉
-        indexer_sites = Config().get_config("pt").get("indexer_sites") or []
-        if indexer_sites and indexer.id not in indexer_sites:
+        # 站点流控
+        if self.sites.check_ratelimit(indexer.siteid):
+            self.progress.update(ptype=ProgressKey.Search, text=f"{indexer.name} 触发站点流控，跳过 ...")
             return []
         # fix 共用同一个dict时会导致某个站点的更新全局全效
         if filter_args is None:
@@ -115,7 +131,7 @@ class BuiltinIndexer(_IIndexClient):
         # 计算耗时
         start_time = datetime.datetime.now()
 
-        log.info(f"【{self.client_name}】开始检索Indexer：{indexer.name} ...")
+        log.info(f"【{self.client_name}】开始搜索Indexer：{indexer.name} ...")
         # 特殊符号处理
         search_word = StringUtils.handler_special_chars(text=key_word,
                                                         replace_word=" ",
@@ -129,6 +145,10 @@ class BuiltinIndexer(_IIndexClient):
         try:
             if indexer.parser == "TNodeSpider":
                 error_flag, result_array = TNodeSpider(indexer=indexer).search(keyword=search_word)
+            elif indexer.parser == "RarBg":
+                error_flag, result_array = Rarbg().search(indexer=indexer,
+                                                          keyword=search_word,
+                                                          imdb_id=match_media.imdb_id if match_media else None)
             elif indexer.parser == "RenderSpider":
                 error_flag, result_array = RenderSpider().search(
                     keyword=search_word,
@@ -152,9 +172,9 @@ class BuiltinIndexer(_IIndexClient):
                                                 result='N' if error_flag else 'Y')
         # 返回结果
         if len(result_array) == 0:
-            log.warn(f"【{self.client_name}】{indexer.name} 未检索到数据")
+            log.warn(f"【{self.client_name}】{indexer.name} 未搜索到数据")
             # 更新进度
-            self.progress.update(ptype=ProgressKey.Search, text=f"{indexer.name} 未检索到数据")
+            self.progress.update(ptype=ProgressKey.Search, text=f"{indexer.name} 未搜索到数据")
             return []
         else:
             log.warn(f"【{self.client_name}】{indexer.name} 返回数据：{len(result_array)}")
@@ -170,7 +190,7 @@ class BuiltinIndexer(_IIndexClient):
 
     def list(self, index_id, page=0, keyword=None):
         """
-        根据站点ID检索站点首页资源
+        根据站点ID搜索站点首页资源
         """
         if not index_id:
             return []
@@ -185,6 +205,10 @@ class BuiltinIndexer(_IIndexClient):
             error_flag, result_array = RenderSpider().search(keyword=keyword,
                                                              indexer=indexer,
                                                              page=page)
+        elif indexer.parser == "RarBg":
+            error_flag, result_array = Rarbg().search(keyword=keyword,
+                                                      indexer=indexer,
+                                                      page=page)
         elif indexer.parser == "TNodeSpider":
             error_flag, result_array = TNodeSpider(indexer=indexer).search(keyword=keyword,
                                                                            page=page)

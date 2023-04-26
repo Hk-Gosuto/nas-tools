@@ -106,14 +106,14 @@ export class PageMediainfo extends CustomElement {
           <div class="card-img-overlay rounded-0 lit-media-info-background">
             <div class="d-md-flex flex-md-row mb-4">
               <custom-img class="d-flex justify-content-center"
-                img-class="rounded-4 object-cover lit-media-info-image"
+                img-class="rounded-3 object-cover lit-media-info-image"
                 img-error=${Object.keys(this.media_info).length === 0 ? "0" : "1"}
                 img-src=${this.media_info.image}>
               </custom-img>
               <div class="d-flex justify-content-center">
                 <div class="d-flex flex-column justify-content-end div-media-detail-margin mt-2">
                   <div class="align-self-center align-self-md-start mb-1">
-                  ${this.fav == "2" ? html`<strong class="badge badge-pill bg-green text-white">已下载</strong>` : nothing }
+                  ${this.fav == "2" ? html`<strong class="badge badge-pill bg-green text-white">已入库</strong>` : nothing }
                   </div>  
                   <h1 class="align-self-center align-self-md-start display-6 text-center">
                     <strong>${this.media_info.title ?? this._render_placeholder("200px")}</strong>

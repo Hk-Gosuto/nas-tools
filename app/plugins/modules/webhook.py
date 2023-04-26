@@ -12,11 +12,13 @@ class Webhook(_IPluginModule):
     # 插件图标
     module_icon = "webhook.png"
     # 主题色
-    module_color = "bg-purple"
+    module_color = "#C73A63"
     # 插件版本
     module_version = "1.0"
     # 插件作者
     module_author = "jxxghp"
+    # 作者主页
+    author_url = "https://github.com/jxxghp"
     # 插件配置项ID前缀
     module_config_prefix = "webhook_"
     # 加载顺序
@@ -82,19 +84,7 @@ class Webhook(_IPluginModule):
     def stop_service(self):
         pass
 
-    @EventHandler.register([
-        EventType.DownloadAdd,
-        EventType.DownloadFail,
-        EventType.TransferFinished,
-        EventType.TransferFail,
-        EventType.SubtitleDownload,
-        EventType.SubscribeAdd,
-        EventType.SubscribeFinished,
-        EventType.MessageIncoming,
-        EventType.SearchStart,
-        EventType.SourceFileDeleted,
-        EventType.LibraryFileDeleted
-    ])
+    @EventHandler.register(EventType)
     def send(self, event):
         """
         向第三方Webhook发送请求

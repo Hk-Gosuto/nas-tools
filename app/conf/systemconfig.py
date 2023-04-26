@@ -33,7 +33,7 @@ class SystemConfig:
         else:
             return str(obj).startswith("{") or str(obj).startswith("[")
 
-    def set_system_config(self, key: [SystemConfigKey, str], value):
+    def set(self, key: [SystemConfigKey, str], value):
         """
         设置系统设置
         """
@@ -43,13 +43,13 @@ class SystemConfig:
         self.systemconfig[key] = value
         # 写入数据库
         if self.__is_obj(value):
-            if value:
+            if value is not None:
                 value = json.dumps(value)
             else:
                 value = ''
         self.dicthelper.set("SystemConfig", key, value)
 
-    def get_system_config(self, key: [SystemConfigKey, str] = None):
+    def get(self, key: [SystemConfigKey, str] = None):
         """
         获取系统设置
         """

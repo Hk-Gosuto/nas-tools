@@ -63,6 +63,7 @@ class CONFIGSYNCPATHS(Base):
     DEST = Column(Text)
     UNKNOWN = Column(Text)
     MODE = Column(Text)
+    COMPATIBILITY = Column(Integer)
     RENAME = Column(Integer)
     ENABLED = Column(Integer)
     NOTE = Column(Text)
@@ -174,6 +175,7 @@ class DOWNLOADHISTORY(Base):
     YEAR = Column(Text)
     TYPE = Column(Text)
     TMDBID = Column(Text)
+    SE = Column(Text)
     VOTE = Column(Text)
     POSTER = Column(Text)
     OVERVIEW = Column(Text)
@@ -183,6 +185,7 @@ class DOWNLOADHISTORY(Base):
     DESC = Column(Text)
     DOWNLOADER = Column(Text)
     DOWNLOAD_ID = Column(Text, index=True)
+    SAVE_PATH = Column(Text, index=True)
     DATE = Column(Text, index=True)
 
     def as_dict(self):
@@ -196,7 +199,6 @@ class DOWNLOADSETTING(Base):
     NAME = Column(Text)
     CATEGORY = Column(Text)
     TAGS = Column(Text)
-    CONTENT_LAYOUT = Column(Integer)
     IS_PAUSED = Column(Integer)
     UPLOAD_LIMIT = Column(Integer)
     DOWNLOAD_LIMIT = Column(Integer)
@@ -257,6 +259,8 @@ class RSSMOVIES(Base):
     FILTER_PIX = Column(Text)
     FILTER_RULE = Column(Integer)
     FILTER_TEAM = Column(Text)
+    FILTER_INCLUDE = Column(Text)
+    FILTER_EXCLUDE = Column(Text)
     SAVE_PATH = Column(Text)
     DOWNLOAD_SETTING = Column(Integer)
     FUZZY_MATCH = Column(Integer)
@@ -302,6 +306,8 @@ class RSSTVS(Base):
     FILTER_PIX = Column(Text)
     FILTER_RULE = Column(Integer)
     FILTER_TEAM = Column(Text)
+    FILTER_INCLUDE = Column(Text)
+    FILTER_EXCLUDE = Column(Text)
     SAVE_PATH = Column(Text)
     DOWNLOAD_SETTING = Column(Integer)
     FUZZY_MATCH = Column(Integer)
@@ -385,6 +391,7 @@ class SITEBRUSHTASK(Base):
     SEED_SIZE = Column(Text)
     INTEVAL = Column(Text)
     LABEL = Column(Text)
+    SAVEPATH = Column(Text)
     DOWNLOADER = Column(Text)
     TRANSFER = Column(Text)
     DOWNLOAD_COUNT = Column(Integer)
@@ -558,6 +565,16 @@ class USERRSSTASKHISTORY(Base):
     TASK_ID = Column(Text, index=True)
     TITLE = Column(Text)
     DOWNLOADER = Column(Text)
+    DATE = Column(Text)
+
+
+class PLUGINHISTORY(Base):
+    __tablename__ = 'PLUGIN_HISTORY'
+
+    ID = Column(Integer, Sequence('ID'), primary_key=True)
+    PLUGIN_ID = Column(Text, index=True)
+    KEY = Column(Text, index=True)
+    VALUE = Column(Text)
     DATE = Column(Text)
 
 

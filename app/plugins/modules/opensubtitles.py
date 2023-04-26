@@ -27,6 +27,8 @@ class OpenSubtitles(_IPluginModule):
     module_version = "1.0"
     # 插件作者
     module_author = "jxxghp"
+    # 作者主页
+    author_url = "https://github.com/jxxghp"
     # 插件配置项ID前缀
     module_config_prefix = "opensubtitles_"
     # 加载顺序
@@ -46,7 +48,7 @@ class OpenSubtitles(_IPluginModule):
     def __init__(self):
         self._ua = Config().get_ua()
 
-    def init_config(self, config: dict):
+    def init_config(self, config: dict = None):
         self.sitehelper = SiteHelper()
         self._save_tmp_path = Config().get_temp_path()
         if not os.path.exists(self._save_tmp_path):
@@ -94,7 +96,7 @@ class OpenSubtitles(_IPluginModule):
         # 媒体信息
         item_media = item.get("media_info")
         if item_media.get("type") != MediaType.MOVIE.value and not item_media.get("imdb_id"):
-            self.warn("电视剧类型需要imdbid才能检索字幕！")
+            self.warn("电视剧类型需要imdbid才能搜索字幕！")
             return
         # 查询名称
         item_name = item_media.get("en_name") or item_media.get("cn_name")
@@ -111,10 +113,10 @@ class OpenSubtitles(_IPluginModule):
         # 后缀
         item_file_ext = item.get("file_ext")
 
-        self.info("开始从Opensubtitle.org检索字幕: %s，imdbid=%s" % (item_name, imdb_id))
+        self.info("开始从Opensubtitle.org搜索字幕: %s，imdbid=%s" % (item_name, imdb_id))
         subtitles = self.search_subtitles(imdb_id=imdb_id, name=item_name, year=item_year)
         if not subtitles:
-            self.warn("%s 未检索到字幕" % item_name)
+            self.warn("%s 未搜索到字幕" % item_name)
         else:
             self.info("opensubtitles.org返回数据：%s" % len(subtitles))
             # 成功数

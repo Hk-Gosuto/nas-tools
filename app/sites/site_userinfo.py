@@ -53,11 +53,17 @@ class SiteUserInfo(object):
                 ExceptionUtils.exception_traceback(e)
         return None
 
-    def build(self, url, site_name, site_cookie=None, ua=None, emulate=None, proxy=False):
+    def build(self, url, site_id, site_name,
+              site_cookie=None, ua=None, emulate=None, proxy=False):
         if not site_cookie:
             return None
         session = requests.Session()
         log.debug(f"【Sites】站点 {site_name} url={url} site_cookie={site_cookie} ua={ua}")
+
+        # 站点流控
+        if self.sites.check_ratelimit(site_id):
+            return
+
         # 检测环境，有浏览器内核的优先使用仿真签到
         chrome = ChromeHelper()
         if emulate and chrome.get_status():
@@ -134,7 +140,7 @@ class SiteUserInfo(object):
         if not site_schema:
             log.error("【Sites】站点 %s 无法识别站点类型" % site_name)
             return None
-        return site_schema(site_name, url, site_cookie, html_text, session=session, ua=ua)
+        return site_schema(site_name, url, site_cookie, html_text, session=session, ua=ua, emulate=emulate, proxy=proxy)
 
     def __refresh_site_data(self, site_info):
         """
@@ -142,6 +148,7 @@ class SiteUserInfo(object):
         :param site_info:
         :return:
         """
+        site_id = site_info.get("id")
         site_name = site_info.get("name")
         site_url = site_info.get("strict_url")
         if not site_url:
@@ -153,6 +160,7 @@ class SiteUserInfo(object):
         proxy = site_info.get("proxy")
         try:
             site_user_info = self.build(url=site_url,
+                                        site_id=site_id,
                                         site_name=site_name,
                                         site_cookie=site_cookie,
                                         ua=ua,
@@ -228,7 +236,14 @@ class SiteUserInfo(object):
         incDownloads = 0
         _, _, site, upload, download = SiteUserInfo().get_pt_site_statistics_history(2)
 
-        for site, upload, download in zip(site, upload, download):
+        # 按照上传降序排序
+        data_list = list(zip(site, upload, download))
+        data_list = sorted(data_list, key=lambda x: x[1], reverse=True)
+
+        for data in data_list:
+            site = data[0]
+            upload = int(data[1])
+            download = int(data[2])
             if upload > 0 or download > 0:
                 incUploads += int(upload)
                 incDownloads += int(download)
@@ -237,12 +252,13 @@ class SiteUserInfo(object):
                                    f"下载量：{StringUtils.str_filesize(download)}\n"
                                    f"\n————————————")
 
-        string_list.insert(0, f"【今日汇总】\n"
-                              f"总上传：{StringUtils.str_filesize(incUploads)}\n"
-                              f"总下载：{StringUtils.str_filesize(incDownloads)}\n"
-                              f"\n————————————")
+        if incDownloads or incUploads:
+            string_list.insert(0, f"【今日汇总】\n"
+                                  f"总上传：{StringUtils.str_filesize(incUploads)}\n"
+                                  f"总下载：{StringUtils.str_filesize(incDownloads)}\n"
+                                  f"\n————————————")
 
-        self.message.send_user_statistics_message(string_list)
+            self.message.send_user_statistics_message(string_list)
 
     def get_site_data(self, specify_sites=None, force=False):
         """
@@ -262,8 +278,7 @@ class SiteUserInfo(object):
 
             if not force \
                     and not specify_sites \
-                    and self._last_update_time \
-                    and (datetime.now() - self._last_update_time).seconds < 6 * 3600:
+                    and self._last_update_time:
                 return
 
             if specify_sites \
@@ -365,6 +380,25 @@ class SiteUserInfo(object):
 
         site_seeding_info["seeding_info"] = json.loads(seeding_info[0])
         return site_seeding_info
+
+    def get_pt_site_min_join_date(self, sites=None):
+        """
+        查询站点加入时间
+        """
+        statistics = self.get_site_user_statistics(sites=sites, encoding="DICT")
+        if not statistics:
+            return ""
+        dates = []
+        for s in statistics:
+            if s.get("join_at"):
+                try:
+                    dates.append(datetime.strptime(s.get("join_at"), '%Y-%m-%d %H:%M:%S'))
+                except Exception as err:
+                    print(str(err))
+                    pass
+        if dates:
+            return min(dates).strftime("%Y-%m-%d")
+        return ""
 
     @staticmethod
     def __todict(raw_statistics):

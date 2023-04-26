@@ -531,7 +531,7 @@ class Message(object):
             "media.stop": "停止播放",
             "PlaybackStart": "开始播放",
             "PlaybackStop": "停止播放",
-            "item.rate": "标记了",
+            "item.rate": "标记了"
         }
         _webhook_images = {
             "Emby": "https://emby.media/notificationicon.png",
@@ -547,12 +547,15 @@ class Message(object):
             message_title = f"{_webhook_actions.get(event_info.get('event'))}剧集 {event_info.get('item_name')}"
         elif event_info.get('item_type') == "MOV":
             message_title = f"{_webhook_actions.get(event_info.get('event'))}电影 {event_info.get('item_name')}"
+        elif event_info.get('item_type') == "AUD":
+            message_title = f"{_webhook_actions.get(event_info.get('event'))}有声书 {event_info.get('item_name')}"
         else:
             message_title = f"{_webhook_actions.get(event_info.get('event'))}"
 
         # 消息内容
-        if {event_info.get('user_name')}:
-            message_texts = [f"用户：{event_info.get('user_name')}"]
+        message_texts = []
+        if event_info.get('user_name'):
+            message_texts.append(f"用户：{event_info.get('user_name')}")
         if event_info.get('device_name'):
             message_texts.append(f"设备：{event_info.get('client')} {event_info.get('device_name')}")
         if event_info.get('ip'):
@@ -582,9 +585,9 @@ class Message(object):
                     image=image_url
                 )
 
-    def send_custom_message(self, title, text="", image=""):
+    def send_plugin_message(self, title, text="", image=""):
         """
-        发送自定义消息
+        发送插件消息
         """
         if not title:
             return
@@ -593,6 +596,26 @@ class Message(object):
         # 发送消息
         for client in self._active_clients:
             if "custom_message" in client.get("switchs"):
+                self.__sendmsg(
+                    client=client,
+                    title=title,
+                    text=text,
+                    image=image
+                )
+
+    def send_custom_message(self, clients, title, text="", image=""):
+        """
+        发送自定义消息
+        """
+        if not title:
+            return
+        if not clients:
+            return
+        # 插入消息中心
+        self.messagecenter.insert_system_message(level="INFO", title=title, content=text)
+        # 发送消息
+        for client in self._active_clients:
+            if str(client.get("id")) in clients:
                 self.__sendmsg(
                     client=client,
                     title=title,

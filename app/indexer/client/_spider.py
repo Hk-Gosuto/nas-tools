@@ -45,7 +45,7 @@ class TorrentSpider(feapder.AirSpider):
             custom_argument=["--ignore-certificate-errors"],
         )
     )
-    # 是否检索完成标志
+    # 是否搜索完成标志
     is_complete = False
     # 是否出现错误
     is_error = False
@@ -65,13 +65,13 @@ class TorrentSpider(feapder.AirSpider):
     render = False
     # Referer
     referer = None
-    # 检索关键字
+    # 搜索关键字
     keyword = None
     # 媒体类型
     mtype = None
-    # 检索路径、方式配置
+    # 搜索路径、方式配置
     search = {}
-    # 批量检索配置
+    # 批量搜索配置
     batch = {}
     # 浏览配置
     browse = {}
@@ -83,7 +83,7 @@ class TorrentSpider(feapder.AirSpider):
     fields = {}
     # 页码
     page = 0
-    # 检索条数
+    # 搜索条数
     result_num = 100
     # 单个种子信息
     torrents_info = {}
@@ -98,7 +98,7 @@ class TorrentSpider(feapder.AirSpider):
         """
         设置查询参数
         :param indexer: 索引器
-        :param keyword: 检索关键字，如果数组则为批量检索
+        :param keyword: 搜索关键字，如果数组则为批量搜索
         :param page: 页码
         :param referer: Referer
         :param mtype: 媒体类型
@@ -181,7 +181,7 @@ class TorrentSpider(feapder.AirSpider):
                 # 查询模式与
                 search_mode = "0"
 
-            # 检索URL
+            # 搜索URL
             if self.search.get("params"):
                 # 变量字典
                 inputs_dict = {
@@ -238,12 +238,13 @@ class TorrentSpider(feapder.AirSpider):
             if self.browse:
                 torrentspath = self.browse.get("path")
                 if self.browse.get("start"):
+                    start_page = int(self.browse.get("start")) + int(self.page or 0)
                     inputs_dict.update({
-                        "page": self.browse.get("start")
+                        "page": start_page
                     })
             elif self.page:
                 torrentspath = torrentspath + f"?page={self.page}"
-            # 检索Url
+            # 搜索Url
             searchurl = self.domain + str(torrentspath).format(**inputs_dict)
 
         log.info(f"【Spider】开始请求：{searchurl}")
@@ -392,9 +393,12 @@ class TorrentSpider(feapder.AirSpider):
         # details
         if 'details' not in self.fields:
             return
-        details = torrent(self.fields.get('details', {}).get('selector', ''))
-        items = [item.attr(self.fields.get('details', {}).get('attribute')) for item in details.items()]
+        selector = self.fields.get('details', {})
+        details = torrent(selector.get('selector', ''))
+        items = [item.attr(selector.get('attribute')) for item in details.items()]
         if items:
+            if 'filters' in selector:
+                items[0] = self.__filter_text(items[0], selector.get('filters'))
             if not items[0].startswith("http"):
                 if items[0].startswith("//"):
                     self.torrents_info['page_url'] = self.domain.split(":")[0] + ":" + items[0]
@@ -404,31 +408,33 @@ class TorrentSpider(feapder.AirSpider):
                     self.torrents_info['page_url'] = self.domain + items[0]
             else:
                 self.torrents_info['page_url'] = items[0]
-            if 'filters' in self.fields.get('details', {}):
-                self.torrents_info['page_url'] = self.__filter_text(self.torrents_info.get('page_url'),
-                                                                    self.fields.get('details',
-                                                                                    {}).get('filters'))
 
     def Getdownload(self, torrent):
         # download link
         if 'download' not in self.fields:
             return
-        if "detail" in self.fields.get('download', {}):
-            selector = self.fields.get('download', {}).get("detail", {})
-            if "xpath" in selector:
-                self.torrents_info['enclosure'] = f'[{selector.get("xpath", "")}' \
+        selector = self.fields.get('download', {})
+        if "detail" in selector:
+            detail = selector.get("detail", {})
+            if "xpath" in detail:
+                self.torrents_info['enclosure'] = f'[{detail.get("xpath", "")}' \
                                                   f'|{self.cookie or ""}' \
                                                   f'|{self.ua or ""}' \
                                                   f'|{self.referer or ""}]'
-            elif "hash" in selector:
-                self.torrents_info['enclosure'] = f'#{selector.get("hash", "")}' \
+            elif "hash" in detail:
+                self.torrents_info['enclosure'] = f'#{detail.get("hash", "")}' \
                                                   f'|{self.cookie or ""}' \
                                                   f'|{self.ua or ""}' \
                                                   f'|{self.referer or ""}#'
         else:
-            download = torrent(self.fields.get('download', {}).get('selector', ''))
-            items = [item.attr(self.fields.get('download', {}).get('attribute')) for item in download.items()]
+            download = torrent(selector.get('selector', ''))
+            if "attribute" in selector:
+                items = [item.attr(selector.get('attribute')) for item in download.items() if item]
+            else:
+                items = [item.text() for item in download.items() if item]
             if items:
+                if 'filters' in selector:
+                    items[0] = self.__filter_text(items[0], selector.get('filters'))
                 if not items[0].startswith("http") and not items[0].startswith("magnet"):
                     self.torrents_info['enclosure'] = self.domain + items[0][1:] if items[0].startswith(
                         "/") else self.domain + items[0]
@@ -618,7 +624,7 @@ class TorrentSpider(feapder.AirSpider):
             self.Getlabels(torrent)
         except Exception as err:
             ExceptionUtils.exception_traceback(err)
-            log.error("【Spider】%s 检索出现错误：%s" % (self.indexername, str(err)))
+            log.error("【Spider】%s 搜索出现错误：%s" % (self.indexername, str(err)))
         return self.torrents_info
 
     @staticmethod

@@ -8,6 +8,7 @@ export class PluginModal extends CustomElement {
     config: {attribute: "plugin-config", type: Object},
     fields: {attribute: "plugin-fields", type: Array},
     prefix: {attribute: "plugin-prefix"},
+    page: {attribute: "plugin-page"},
   };
 
   constructor() {
@@ -72,7 +73,10 @@ export class PluginModal extends CustomElement {
   __render_details(field) {
     let title = field["summary"];
     let tooltip = field["tooltip"];
-    return html`<details class="mb-2">
+    let id = field["id"];
+    let hidden = field["hidden"];
+    let open = field["open"];
+    return html`<details class="mb-2" id="${this.prefix}${id}" style="display:${hidden ? 'none':'block'}" ?open="${open}">
                   <summary class="summary mb-2">
                     ${title} ${this.__render_note(tooltip)}
                   </summary>
@@ -115,11 +119,13 @@ export class PluginModal extends CustomElement {
     let required = field_content["required"];
     let tooltip = field_content["tooltip"];
     let id = field_content["id"];
+    let onclick = field_content["onclick"];
+    let default_value = field_content["default"];
     let checkbox;
-    if (this.config[id]) {
-      checkbox = html`<input class="form-check-input" type="checkbox" id="${this.prefix}${id}" checked>`
+    if (this.config[id] || (this.config[id] === undefined && default_value)) {
+      checkbox = html`<input class="form-check-input" type="checkbox" id="${this.prefix}${id}" onclick="${onclick}" checked>`
     } else {
-      checkbox = html`<input class="form-check-input" type="checkbox" id="${this.prefix}${id}">`
+      checkbox = html`<input class="form-check-input" type="checkbox" id="${this.prefix}${id}" onclick="${onclick}">`
     }
     return html`<div class="col-12 col-lg">
                   <div class="mb-1">
@@ -141,6 +147,7 @@ export class PluginModal extends CustomElement {
       let id = content[index]["id"];
       let options = content[index]["options"];
       let default_value = content[index]["default"];
+      let onchange = content[index]["onchange"];
       let text_options = html``;
       for (let option in options) {
         if (this.config[id]) {
@@ -158,7 +165,7 @@ export class PluginModal extends CustomElement {
       text_content = html`
         <div class="mb-1">
           <label class="form-label ${required}">${title} ${this.__render_note(tooltip)}</label>
-          <select class="form-control" id="${this.prefix}${id}">
+          <select class="form-control" id="${this.prefix}${id}" onchange="${onchange}">
             ${text_options}
           </select>
         </div>`
@@ -197,13 +204,19 @@ export class PluginModal extends CustomElement {
     console.log()
     let content = field_content["content"];
     let id = field_content["id"];
+    let radio = field_content["radio"];
     let text_options = html``;
     for (let option in content) {
       let checkbox;
+      let onclick = "";
+      // 单选
+      if (radio) {
+        onclick = `check_selectgroup_raido(this)`
+      }
       if (this.config[id] && this.config[id].includes(option)) {
-        checkbox = html`<input type="checkbox" name="${id}" value="${option}" class="form-selectgroup-input" checked>`
+        checkbox = html`<input type="checkbox" name="${this.prefix}${id}" value="${option}" onclick="${onclick}" class="form-selectgroup-input" checked>`
       } else {
-        checkbox = html`<input type="checkbox" name="${id}" value="${option}" class="form-selectgroup-input">`
+        checkbox = html`<input type="checkbox" name="${this.prefix}${id}" value="${option}" onclick="${onclick}" class="form-selectgroup-input">`
       }
       text_options = html`${text_options}
                           <label class="form-selectgroup-item">
@@ -213,7 +226,7 @@ export class PluginModal extends CustomElement {
     }
     return html`<div class="col-12 col-lg">
                   <div class="mb-1">
-                    <div class="form-selectgroup" id="${id}">
+                    <div class="form-selectgroup" id="${this.prefix}${id}">
                       ${text_options}
                     </div>
                   </div>
@@ -240,6 +253,9 @@ export class PluginModal extends CustomElement {
             ${this.__render_fields()}
             </div>
             <div class="modal-footer">
+              <a href="javascript:show_plugin_extra_page('${this.id}')" class="btn me-auto" ?hidden="${!this.page}">
+                ${this.page}
+              </a>
               <a href="javascript:save_plugin_config('${this.id}', '${this.prefix}')" class="btn btn-primary">
                 确定
               </a>

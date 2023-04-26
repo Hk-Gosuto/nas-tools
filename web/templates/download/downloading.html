@@ -38,12 +38,12 @@
     <div class="container-xl">
       <div class="d-grid gap-3 grid-info-card">
         {% for Torrent in Torrents %}
-          <div class="card">
+          <div class="card p-0">
             <div class="card-body">
               <div class="row align-items-center">
                 {% if Torrent.image %}
-                  <div class="col-3">
-                    <img src="{{ Torrent.image }}" class="rounded" alt="">
+                  <div class="col-auto p-0">
+                    <img src="{{ Torrent.image }}" class="rounded" alt="" style="max-width: 80px;">
                   </div>
                 {% endif %}
                 <div class="col">
@@ -73,7 +73,7 @@
                     </div>
                   {% endif %}
                 </div>
-                <div class="col-auto">
+                <div class="col-auto p-0">
                   <div class="dropdown">
                     {% if not Torrent.nomenu %}
                       <a href="#" class="btn-action" data-bs-toggle="dropdown" aria-expanded="false">
@@ -179,7 +179,7 @@
       const params = {
         "files": torrent_dropzone.files,
         "urls": urls.split("\n"),
-        "dl_dir": $("#search_download_dir").val(),
+        "dl_dir": get_savepath("search_download_dir", "search_download_dir_manual"),
         "dl_setting": $("#search_download_setting").val()
       }
       ajax_post("download_torrent", params, function (ret) {

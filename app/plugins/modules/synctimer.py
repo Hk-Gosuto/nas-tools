@@ -14,11 +14,13 @@ class SyncTimer(_IPluginModule):
     # 插件图标
     module_icon = "synctimer.png"
     # 主题色
-    module_color = "bg-green"
+    module_color = "#53BA48"
     # 插件版本
     module_version = "1.0"
     # 插件作者
     module_author = "jxxghp"
+    # 作者主页
+    author_url = "https://github.com/jxxghp"
     # 插件配置项ID前缀
     module_config_prefix = "synctimer_"
     # 加载顺序
@@ -85,7 +87,7 @@ class SyncTimer(_IPluginModule):
         开始同步
         """
         self.info("开始定时同步 ...")
-        self._sync.transfer_all_sync()
+        self._sync.transfer_sync()
         self.info("定时同步完成")
 
     def stop_service(self):

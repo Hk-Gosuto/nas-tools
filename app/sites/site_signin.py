@@ -1,4 +1,5 @@
 import re
+import time
 from multiprocessing.dummy import Pool as ThreadPool
 from threading import Lock
 
@@ -9,6 +10,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 import log
 from app.helper import ChromeHelper, SubmoduleHelper, DbHelper, SiteHelper
+from app.helper.cloudflare_helper import under_challenge
 from app.message import Message
 from app.sites.siteconf import SiteConf
 from app.sites.sites import Sites
@@ -50,11 +52,12 @@ class SiteSignin(object):
                 ExceptionUtils.exception_traceback(e)
         return None
 
-    def signin(self):
+    def signin(self, siteids=None):
         """
         站点并发签到
         """
-        sites = self.sites.get_sites(signin=True)
+        sites = self.sites.get_sites(signin=True,
+                                     siteids=siteids)
         if not sites:
             return
         with ThreadPool(min(len(sites), self._MAX_CONCURRENCY)) as p:
@@ -67,8 +70,13 @@ class SiteSignin(object):
         签到一个站点
         """
         site_module = self.__build_class(site_info.get("signurl"))
-        if site_module:
-            return site_module.signin(site_info)
+        if site_module and hasattr(site_module, "signin"):
+            try:
+                status, msg = site_module().signin(site_info)
+                # 特殊站点直接返回签到信息，防止仿真签到、模拟登陆有歧义
+                return msg
+            except Exception as e:
+                return f"【{site_info.get('name')}】签到失败：{str(e)}"
         else:
             return self.__signin_base(site_info)
 
@@ -130,6 +138,13 @@ class SiteSignin(object):
                         es.element_to_be_clickable((By.XPATH, xpath_str)))
                     if checkin_obj:
                         checkin_obj.click()
+                        # 检测是否过cf
+                        time.sleep(3)
+                        if under_challenge(chrome.get_html()):
+                            cloudflare = chrome.pass_cloudflare()
+                            if not cloudflare:
+                                log.info("【Sites】%s 仿真签到失败，无法通过Cloudflare" % site)
+                                return f"【{site}】仿真签到失败，无法通过Cloudflare！"
                         log.info("【Sites】%s 仿真签到成功" % site)
                         return f"【{site}】仿真签到成功"
                 except Exception as e:
@@ -148,10 +163,16 @@ class SiteSignin(object):
                                    headers=ua,
                                    proxies=Config().get_proxies() if site_info.get("proxy") else None
                                    ).get_res(url=site_url)
-                if res and res.status_code == 200:
+                if res and res.status_code in [200, 500, 403]:
                     if not SiteHelper.is_logged_in(res.text):
-                        log.warn(f"【Sites】{site} {checkin_text}失败，请检查Cookie")
-                        return f"【{site}】{checkin_text}失败，请检查Cookie！"
+                        if under_challenge(res.text):
+                            msg = "站点被Cloudflare防护，请开启浏览器仿真"
+                        elif res.status_code == 200:
+                            msg = "Cookie已失效"
+                        else:
+                            msg = f"状态码：{res.status_code}"
+                        log.warn(f"【Sites】{site} {checkin_text}失败，{msg}")
+                        return f"【{site}】{checkin_text}失败，{msg}！"
                     else:
                         log.info(f"【Sites】{site} {checkin_text}成功")
                         return f"【{site}】{checkin_text}成功"

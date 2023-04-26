@@ -1,3 +1,6 @@
+import io
+from functools import lru_cache
+
 import cn2an
 
 from app.media import Media, Bangumi, DouBan
@@ -66,7 +69,7 @@ class WebUtils:
         return None, None, False
 
     @staticmethod
-    def get_mediainfo_from_id(mtype, mediaid):
+    def get_mediainfo_from_id(mtype, mediaid, wait=False):
         """
         根据TMDB/豆瓣/BANGUMI获取媒体信息
         """
@@ -76,12 +79,15 @@ class WebUtils:
         if str(mediaid).startswith("DB:"):
             # 豆瓣
             doubanid = mediaid[3:]
-            info = DouBan().get_douban_detail(doubanid=doubanid, mtype=mtype)
+            info = DouBan().get_douban_detail(doubanid=doubanid, mtype=mtype, wait=wait)
             if not info:
                 return None
             title = info.get("title")
             original_title = info.get("original_title")
             year = info.get("year")
+            # 支持自动识别类型
+            if not mtype:
+                mtype = MediaType.TV if info.get("episodes_count") else MediaType.MOVIE
             if original_title:
                 media_info = Media().get_media_info(title=f"{original_title} {year}",
                                                     mtype=mtype,
@@ -184,3 +190,21 @@ class WebUtils:
                 else:
                     EndPage = total_page
         return range(StartPage, EndPage + 1)
+
+    @staticmethod
+    @lru_cache(maxsize=128)
+    def request_cache(url):
+        ret = RequestUtils().get_res(url)
+        if ret:
+            return ret.content
+        return None
+
+    @staticmethod
+    def get_image_stream(url):
+        """
+        根据地址下载图片
+        """
+        result = WebUtils.request_cache(url)
+        if result:
+            return io.BytesIO(result)
+        return None

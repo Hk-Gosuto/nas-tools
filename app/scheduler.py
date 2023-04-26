@@ -9,7 +9,6 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.util import undefined
 
 import log
-from app.doubansync import DoubanSync
 from app.helper import MetaHelper
 from app.mediaserver import MediaServer
 from app.rss import Rss
@@ -37,7 +36,8 @@ class Scheduler:
     def init_config(self):
         self._pt = Config().get_config('pt')
         self._media = Config().get_config('media')
-        self._douban = Config().get_config('douban')
+        self.stop_service()
+        self.run_service()
 
     def run_service(self):
         """
@@ -79,7 +79,7 @@ class Scheduler:
                     self.SCHEDULER.add_job(Rss().rssdownload, 'interval', seconds=pt_check_interval)
                     log.info("RSS订阅服务启动")
 
-            # RSS订阅定时检索
+            # RSS订阅定时搜索
             search_rss_interval = self._pt.get('search_rss_interval')
             if search_rss_interval:
                 if isinstance(search_rss_interval, str) and search_rss_interval.isdigit():
@@ -95,23 +95,6 @@ class Scheduler:
                         search_rss_interval = 6
                     self.SCHEDULER.add_job(Subscribe().subscribe_search_all, 'interval', hours=search_rss_interval)
                     log.info("订阅定时搜索服务启动")
-
-        # 豆瓣电影同步
-        if self._douban:
-            douban_interval = self._douban.get('interval')
-            if douban_interval:
-                if isinstance(douban_interval, str):
-                    if douban_interval.isdigit():
-                        douban_interval = int(douban_interval)
-                    else:
-                        try:
-                            douban_interval = float(douban_interval)
-                        except Exception as e:
-                            log.info("豆瓣同步服务启动失败：%s" % str(e))
-                            douban_interval = 0
-                if douban_interval:
-                    self.SCHEDULER.add_job(DoubanSync().sync, 'interval', hours=douban_interval)
-                    log.info("豆瓣同步服务启动")
 
         # 媒体库同步
         if self._media:
@@ -136,7 +119,7 @@ class Scheduler:
         # 定时把队列中的监控文件转移走
         self.SCHEDULER.add_job(Sync().transfer_mon_files, 'interval', seconds=SYNC_TRANSFER_INTERVAL)
 
-        # RSS队列中检索
+        # RSS队列中搜索
         self.SCHEDULER.add_job(Subscribe().subscribe_search, 'interval', seconds=RSS_CHECK_INTERVAL)
 
         # 豆瓣RSS转TMDB，定时更新TMDB数据
@@ -241,13 +224,6 @@ class Scheduler:
                 self.SCHEDULER = None
         except Exception as e:
             ExceptionUtils.exception_traceback(e)
-
-    def restart_service(self):
-        """
-        重启定时服务
-        """
-        self.stop_service()
-        self.start_service()
 
     def start_range_job(self, func, func_desc, hour, minute, next_run_time=None):
         year = datetime.datetime.now().year
