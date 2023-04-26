@@ -1,5 +1,5 @@
 from app.utils import ExceptionUtils
-from app.utils.types import IndexerType
+from app.utils.types import IndexerType, SearchType
 from config import Config
 from app.indexer.client._base import _IIndexClient
 from app.utils import RequestUtils
@@ -7,10 +7,16 @@ from app.helper import IndexerConf
 
 
 class Prowlarr(_IIndexClient):
-    schema = "prowlarr"
-    _client_config = {}
-    index_type = IndexerType.PROWLARR.value
+    # 索引器ID
+    client_id = "prowlarr"
+    # 索引器类型
     client_type = IndexerType.PROWLARR
+    index_type = IndexerType.PROWLARR.value
+    # 索引器名称
+    client_name = IndexerType.PROWLARR.value
+
+    # 私有属性
+    _client_config = {}
 
     def __init__(self, config=None):
         super().__init__()
@@ -32,8 +38,9 @@ class Prowlarr(_IIndexClient):
 
     @classmethod
     def match(cls, ctype):
-        return True if ctype in [cls.schema, cls.index_type] else False
-
+        return True if ctype in [
+            cls.client_id, cls.client_type, cls.client_name
+        ] else False
 
     def get_type(self):
         return self.client_type
@@ -47,7 +54,7 @@ class Prowlarr(_IIndexClient):
             return False
         return True if self.get_indexers() else False
 
-    def get_indexers(self):
+    def get_indexers(self, check=True, indexer_id=None, public=True):
         """
         获取配置的prowlarr indexer
         :return: indexer 信息 [(indexerId, indexerName, url)]
@@ -67,5 +74,7 @@ class Prowlarr(_IIndexClient):
                              "builtin": False})
                 for v in indexers]
 
-    def search(self, *kwargs):
-        return super().search(*kwargs)
+    def search(self, order_seq, indexer, key_word, filter_args: dict,
+               match_media, in_from: SearchType):
+        return super().search(order_seq, indexer, key_word, filter_args,
+                              match_media, in_from)
