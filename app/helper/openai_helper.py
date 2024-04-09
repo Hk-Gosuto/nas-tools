@@ -40,10 +40,7 @@ class OpenAiHelper:
         """
         seasion = OpenAISessionCache.get(session_id)
         if seasion:
-            seasion.append({
-                "role": "assistant",
-                "content": message
-            })
+            seasion.append({"role": "assistant", "content": message})
             OpenAISessionCache.set(session_id, seasion)
 
     @staticmethod
@@ -55,55 +52,54 @@ class OpenAiHelper:
         """
         seasion = OpenAISessionCache.get(session_id)
         if seasion:
-            seasion.append({
-                "role": "user",
-                "content": message
-            })
+            seasion.append({"role": "user", "content": message})
         else:
             seasion = [
                 {
                     "role": "system",
-                    "content": "请在接下来的对话中请使用中文回复，并且内容尽可能详细。"
+                    "content": "请在接下来的对话中请使用中文回复，并且内容尽可能详细。",
                 },
-                {
-                    "role": "user",
-                    "content": message
-                }]
+                {"role": "user", "content": message},
+            ]
             OpenAISessionCache.set(session_id, seasion)
         return seasion
 
     @staticmethod
-    def __get_model(message,
-                    prompt=None,
-                    user="NAStool",
-                    **kwargs):
+    def __get_model(message, prompt=None, user="NAStool", **kwargs):
         """
         获取模型
         """
         if not isinstance(message, list):
             if prompt:
                 message = [
-                    {
-                        "role": "system",
-                        "content": prompt
-                    },
-                    {
-                        "role": "user",
-                        "content": message
-                    }
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": message},
                 ]
             else:
-                message = [
-                    {
-                        "role": "user",
-                        "content": message
-                    }
-                ]
+                message = [{"role": "user", "content": message}]
         return openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-3.5-turbo-0125", user=user, messages=message, **kwargs
+        )
+
+    @staticmethod
+    def __get_json_model(message, prompt=None, user="NAStool", **kwargs):
+        """
+        获取模型
+        """
+        if not isinstance(message, list):
+            if prompt:
+                message = [
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": message},
+                ]
+            else:
+                message = [{"role": "user", "content": message}]
+        return openai.ChatCompletion.create(
+            model="gpt-3.5-turbo-0125",
             user=user,
+            response_format={"type": "json_object"},
             messages=message,
-            **kwargs
+            **kwargs,
         )
 
     @staticmethod
@@ -126,10 +122,14 @@ class OpenAiHelper:
             return None
         result = ""
         try:
-            _filename_prompt = "I will give you a movie/tvshow file name.You need to return a Json." \
-                               "\nPay attention to the correct identification of the film name." \
-                               "\n{\"title\":string,\"version\":string,\"part\":string,\"year\":string,\"resolution\":string,\"season\":number|null,\"episode\":number|null}"
-            completion = self.__get_model(prompt=_filename_prompt, message=filename)
+            _filename_prompt = (
+                "You are a helpful assistant designed to output JSON."
+                "\nI will give you a movie/tvshow file name.You need to return a Json."
+                '\nformat: {"title":string,"version":string,"part":string,"year":string,"resolution":string,"season":number|null,"episode":number|null}'
+            )
+            completion = self.__get_json_model(
+                prompt=_filename_prompt, message=filename
+            )
             result = completion.choices[0].message.content
             return json.loads(result)
         except Exception as e:
@@ -180,12 +180,14 @@ class OpenAiHelper:
         user_prompt = f"translate to zh-CN:\n\n{text}"
         result = ""
         try:
-            completion = self.__get_model(prompt=system_prompt,
-                                          message=user_prompt,
-                                          temperature=0,
-                                          top_p=1,
-                                          frequency_penalty=0,
-                                          presence_penalty=0)
+            completion = self.__get_model(
+                prompt=system_prompt,
+                message=user_prompt,
+                temperature=0,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0,
+            )
             result = completion.choices[0].message.content.strip()
             return True, result
         except Exception as e:
