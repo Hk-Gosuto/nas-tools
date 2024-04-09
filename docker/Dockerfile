@@ -1,10 +1,10 @@
-FROM alpine AS Builder
+FROM alpine:3.17 AS Builder
 RUN apk add --no-cache --virtual .build-deps \
-        libffi-dev \
-        gcc \
-        musl-dev \
-        libxml2-dev \
-        libxslt-dev \
+    libffi-dev \
+    gcc \
+    musl-dev \
+    libxml2-dev \
+    libxslt-dev \
     && apk add --no-cache $(echo $(wget --no-check-certificate -qO- https://raw.githubusercontent.com/Hk-Gosuto/nas-tools/master/package_list.txt)) \
     && ln -sf /usr/bin/python3 /usr/bin/python \
     && curl https://rclone.org/install.sh | bash \
