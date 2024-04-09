@@ -111,3 +111,4 @@ websockets==10.3
 Werkzeug==2.2.3
 wsproto==1.2.0
 zhconv==1.4.3
+httpx==0.24.1

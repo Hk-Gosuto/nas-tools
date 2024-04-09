@@ -6,6 +6,7 @@ from app.utils import OpenAISessionCache
 from app.utils.commons import singleton
 from config import Config
 
+import log
 
 @singleton
 class OpenAiHelper:
@@ -21,7 +22,7 @@ class OpenAiHelper:
             openai.api_key = self._api_key
         self._api_url = Config().get_config("openai").get("api_url")
         if self._api_url:
-            openai.api_base = self._api_url + "/v1"
+            openai.base_url = self._api_url + "/v1/"
         else:
             proxy_conf = Config().get_proxies()
             if proxy_conf and proxy_conf.get("https"):
@@ -94,7 +95,7 @@ class OpenAiHelper:
                 ]
             else:
                 message = [{"role": "user", "content": message}]
-        return openai.ChatCompletion.create(
+        return openai.chat.completions.create(
             model="gpt-3.5-turbo-0125",
             user=user,
             response_format={"type": "json_object"},
@@ -131,6 +132,7 @@ class OpenAiHelper:
                 prompt=_filename_prompt, message=filename
             )
             result = completion.choices[0].message.content
+            log.info(f"[ChatGPT] {result}")
             return json.loads(result)
         except Exception as e:
             print(f"{str(e)}：{result}")
