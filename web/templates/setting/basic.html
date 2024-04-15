@@ -672,7 +672,7 @@
             <div class="row align-items-center">
               <div class="col"></div>
               <div class="col-auto">
-                <a id="ai_save_btn" href="javascript:save_ai_config('ai')" class="btn btn-primary">
+                <a id="ai_btn" href="javascript:save_ai_config('ai')" class="btn btn-primary">
                   保存
                 </a>
               </div>
@@ -1248,6 +1248,7 @@
 
   // 保存AI设置
   function save_ai_config(type, flag=true) {
+    let params = input_select_GetVal(type);
     if (flag) {
       $("#" + type + "_btn").text("保存中...").attr("disabled", true);
     }
