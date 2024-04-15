@@ -607,7 +607,7 @@
             <div class="col-md-12">
         <div class="card" id="ai">
           <div class="card-header">
-            <h3 class="card-title"><strong>媒体</strong></h3>
+            <h3 class="card-title"><strong>AI</strong></h3>
           </div>
           <div class="card-body">
             <div class="row">
@@ -651,6 +651,19 @@
                                                                         data-bs-toggle="tooltip">?</span></label>
                   <input type="text" value="{% if Config.ai %}{{ Config.ai.model or '' }}{% endif %}" class="form-control"
                          id="ai.model" placeholder="gpt-3.5-turbo-0125" autocomplete="off">
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-lg">
+                <div class="mb-3">
+                  <label class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="ai.priority" {% if
+                      Config.ai.priority %}checked{% endif %}>
+                    <span class="form-check-label">AI媒体识别优先 <span class="form-help"
+                                                                        title="开启后，优先使用AI识别的媒体信息"
+                                                                        data-bs-toggle="tooltip">?</span></span>
+                  </label>
                 </div>
               </div>
             </div>
