@@ -623,7 +623,7 @@ class Media:
                 mtype = MediaType.TV
             # 处理标题和年份
             file_title, file_year, season_number = None, None, None
-            if file_info.get("title"):
+            if file_info.get("cn_title"):
                 file_title = (
                     str(file_info.get("cn_title"))
                     .split("/")[0]

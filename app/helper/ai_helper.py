@@ -116,17 +116,7 @@ class AiHelper:
         try:
             _filename_prompt = """
 I will give you a movie/tvshow file name.You need to return a Json.
-format: {"cn_title":string|null,"en_title":string|null,"jp_title":string|null,"version":string|null,"part":string|null,"year":string|null,resolution":string,"season":number|null,"episode":number|null,"subtitle_group":string,"subtitle_language":string|null}
-
-example:
-[桜都字幕组] 无职转生～到了异世界就拿出真本事～ S2 / Mushoku Tensei S2  [13][1080p@60FPS][繁体内嵌]
-{"cn_title":"无职转生～到了异世界就拿出真本事～","en_title":"Mushoku Tensei","resolution":"1080","season":2,"episode":13,"subtitle_group":"桜都字幕组","subtitle_language":"繁体"}
-[Billion Meta Lab] 终末列车寻往何方 Shuumatsu Torein Dokoe Iku [01][1080][简日内嵌]
-{"cn_title":"终末列车寻往何方","en_title":"Shuumatsu Torein Dokoe Iku","resolution":"1080","episode":1,"subtitle_group":"Billion Meta Lab","subtitle_language":"简日"}
-【幻樱字幕组】【1月新番】【迷宫饭 Dungeon Meshi】【15】【BIG5_MP4】【1920X1080】
-{"cn_title":"迷宫饭","en_title":"Dungeon Meshi","resolution":"1080","episode":15,"subtitle_group":"幻樱字幕组","subtitle_language":"BIG5"}
-【旋风字幕组】死神Bleach 第355话「死神参战 ！静灵庭正月特辑！」MP4/简体 1280x720
-{"cn_title":"死神","en_title":"Bleach","resolution":"1280x720","episode":355,"subtitle_group":"旋风字幕组","subtitle_language":"简体"}
+format: {"cn_title":string|null,"en_title":string|null,"jp_title":string|null,"version":string|null,"part":string|null,"year":string|null,"resolution":string,"season":number|null,"episode":number|null,"subtitle_group":string,"subtitle_language":string|null}
 """
             result = None
             if self._provider == "openai":
