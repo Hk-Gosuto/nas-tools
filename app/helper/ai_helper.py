@@ -36,9 +36,9 @@ class AiHelper:
                 proxy_conf = Config().get_proxies()
                 if proxy_conf and proxy_conf.get("https"):
                     openai.proxy = proxy_conf.get("https")
-        else:
+        if self._provider == "ollama":
             if self._api_url:
-                _ollama_client = Client(host=self._api_url)
+                self._ollama_client = Client(host=self._api_url)
             if not self._api_key:
                 self._api_key = "ollama"
             if not self._model:
