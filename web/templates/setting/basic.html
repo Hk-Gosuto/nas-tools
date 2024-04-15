@@ -277,24 +277,6 @@
                          id="app.tmdb_image_url" placeholder="https://image.tmdb.org" autocomplete="off">
                 </div>
               </div>
-              <div class="col-lg">
-                <div class="mb-3">
-                  <label class="form-label">OpenAI API Url <span class="form-help"
-                                                                        title="自定义openai请求地址（请注意格式，请求地址需带有请求头且最后没有/号），不填默认使用https://api.openai.com"
-                                                                        data-bs-toggle="tooltip">?</span></label>
-                  <input type="text" value="{% if Config.openai %}{{ Config.openai.api_url or '' }}{% endif %}" class="form-control"
-                         id="openai.api_url" placeholder="https://api.openai.com" autocomplete="off">
-                </div>
-              </div>
-              <div class="col-lg">
-                <div class="mb-3">
-                  <label class="form-label">OpenAI API Key <span class="form-help"
-                                                                        title="在platform.openai.com网站申请API Key，用于使用ChatGPT辅助识别文件名（需要打开增强识别开关）及聊天交互等；填写此项代表启用ChatGPT，根据API使用情况OpenAI官方会收取相应的费用"
-                                                                        data-bs-toggle="tooltip">?</span></label>
-                  <input type="text" value="{% if Config.openai %}{{ Config.openai.api_key or '' }}{% endif %}" class="form-control"
-                         id="openai.api_key" placeholder="sk-xxx" autocomplete="off">
-                </div>
-              </div>
             </div>
             <div class="row">
               <div class="col-lg">
@@ -622,6 +604,69 @@
         </div>
       </div>
       {% if CurrentUser.level >= 2 %}
+            <div class="col-md-12">
+        <div class="card" id="ai">
+          <div class="card-header">
+            <h3 class="card-title"><strong>媒体</strong></h3>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-lg">
+                <div class="mb-3">
+                  <label class="form-label required">服务商 <span class="form-help"
+                                                                    title="根据需求自行选择"
+                                                                    data-bs-toggle="tooltip">?</span></label>
+                  <select class="form-select" id="ai.provider">
+                    <option value="openai" {% if not Config.ai.provider or
+                      Config.ai.provider=='openai' %}selected{% endif %}>openai
+                    </option>
+                    <option value="ollama" {% if Config.ai.provider=='ollama' %}selected{% endif %}>
+                      ollama
+                    </option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-lg">
+                <div class="mb-3">
+                  <label class="form-label">API Url <span class="form-help"
+                                                                        title="自定义服务商请求地址（请注意格式，请求地址需带有请求头且最后没有/号），不填默认使用https://api.openai.com"
+                                                                        data-bs-toggle="tooltip">?</span></label>
+                  <input type="text" value="{% if Config.ai %}{{ Config.ai.api_url or '' }}{% endif %}" class="form-control"
+                         id="ai.api_url" placeholder="https://api.openai.com" autocomplete="off">
+                </div>
+              </div>
+              <div class="col-lg">
+                <div class="mb-3">
+                  <label class="form-label">API Key <span class="form-help"
+                                                                        title="在platform.openai.com网站申请API Key，用于使用ChatGPT辅助识别文件名（需要打开增强识别开关）及聊天交互等；填写此项代表启用ChatGPT，根据API使用情况OpenAI官方会收取相应的费用，使用ollama时无需填写"
+                                                                        data-bs-toggle="tooltip">?</span></label>
+                  <input type="text" value="{% if Config.ai %}{{ Config.ai.api_key or '' }}{% endif %}" class="form-control"
+                         id="ai.api_key" placeholder="sk-xxx" autocomplete="off">
+                </div>
+              </div>
+              <div class="col-lg">
+                <div class="mb-3">
+                  <label class="form-label">模型名 <span class="form-help"
+                                                                        title="填写识别时使用的模型名，默认为gpt-3.5-turbo-0125"
+                                                                        data-bs-toggle="tooltip">?</span></label>
+                  <input type="text" value="{% if Config.ai %}{{ Config.ai.model or '' }}{% endif %}" class="form-control"
+                         id="ai.model" placeholder="gpt-3.5-turbo-0125" autocomplete="off">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-footer">
+            <div class="row align-items-center">
+              <div class="col"></div>
+              <div class="col-auto">
+                <a id="ai_save_btn" href="javascript:save_ai_config('ai')" class="btn btn-primary">
+                  保存
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="col-md-12">
         <div class="card" id="laboratory">
           <div class="card-header">
@@ -1177,6 +1222,19 @@
       show_warning_modal("非法二级分类策略名称");
       return;
     }
+    if (flag) {
+      $("#" + type + "_btn").text("保存中...").attr("disabled", true);
+    }
+    ajax_post("update_config", params, function (ret) {
+      if (flag) {
+        $("#" + type + "_btn").text("保存").attr("disabled", false);
+        window_history_refresh()
+      }
+    });
+  }
+
+  // 保存AI设置
+  function save_ai_config(type, flag=true) {
     if (flag) {
       $("#" + type + "_btn").text("保存中...").attr("disabled", true);
     }
