@@ -867,7 +867,7 @@ class Media:
         if not meta_info:
             return None
         md5_hash = hashlib.md5()
-        md5_hash.update(meta_info.org_string)
+        md5_hash.update(meta_info.org_string.encode("utf-8"))
         org_title_digest = md5_hash.hexdigest()
         return f"[{meta_info.type.value}]{meta_info.get_name()}-{meta_info.year}-{meta_info.begin_season}-[{org_title_digest}]"
 
