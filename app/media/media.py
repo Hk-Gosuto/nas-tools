@@ -4,6 +4,7 @@ import random
 import re
 import traceback
 from functools import lru_cache
+import hashlib
 
 import zhconv
 from lxml import etree
@@ -865,7 +866,10 @@ class Media:
         """
         if not meta_info:
             return None
-        return f"[{meta_info.type.value}]{meta_info.get_name()}-{meta_info.year}-{meta_info.begin_season}"
+        md5_hash = hashlib.md5()
+        md5_hash.update(meta_info.org_string)
+        org_title_digest = md5_hash.hexdigest()
+        return f"[{meta_info.type.value}]{meta_info.get_name()}-{meta_info.year}-{meta_info.begin_season}-[{org_title_digest}]"
 
     def get_cache_info(self, meta_info):
         """
@@ -963,7 +967,7 @@ class Media:
                         file_media_info = self.__search_multi_tmdb(
                             file_media_name=meta_info.get_name()
                         )
-            if not file_media_info and  self._chatgpt_enable and self.ai_priority:
+            if not file_media_info and self._chatgpt_enable and self.ai_priority:
                 # 通过AI查询
                 mtype, seaons, episodes, file_media_info = self.__search_ai(
                     file_name=title, mtype=meta_info.type
